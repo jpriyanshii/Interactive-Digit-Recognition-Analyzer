@@ -3,8 +3,10 @@ import tensorflow as tf
 import numpy as np
 import random
 import google.generativeai as genai
+import os
+from dotenv import load_dotenv, find_dotenv
 
-@st.cache_resource
+@st.cache_resource #for optimized loading, caching the model
 def load_my_model():
     return tf.keras.models.load_model('mnist_cnn_model.h5')
 
@@ -13,9 +15,22 @@ model = load_my_model()
 (_, _), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
 x_test_reshaped = x_test.reshape(-1, 28, 28, 1).astype('float32') / 255.0
 
+env_path = find_dotenv()
+if env_path:
+    load_dotenv(env_path)
+else:
+    st.error("Error: .env file not found. Please ensure it's in your project's root folder.")
+
 try:
-    genai.configure(api_key="AIzaSyA3LkzFzU05vNv-FCdbD5Kf3rAgsQ32NaA")
-    llm = genai.GenerativeModel('gemini-2.5-flash')
+    api_key = os.getenv("GEMINI_API_KEY") 
+    
+    if not api_key:
+        st.error("Error: GEMINI_API_KEY not found in .env file. Please check your .env file.")
+        llm = None
+    else:
+        genai.configure(api_key=api_key)
+        
+        llm = genai.GenerativeModel('gemini-2.5-flash') 
 except Exception as e:
     st.error(f"Error configuring Gemini API: {e}")
     llm = None
@@ -54,6 +69,7 @@ st.title("🧠 Interactive MNIST Model Study Buddy")
 
 if 'current_image_index' not in st.session_state:
     st.session_state.current_image_index = random.randint(0, len(x_test) - 1)
+    #streamlit object that prevents reloading of random image on every interaction, by storing the curr img in the session state, while user interst with the chat
 
 col1, col2 = st.columns([1, 2])
 
